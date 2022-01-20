@@ -1,7 +1,6 @@
 const router = require("express").Router();
-const { route } = require("express/lib/application");
-const { json } = require("express/lib/response");
-const { Post, User } = require("../../models");
+const sequelize = require("../../config/connection");
+const { Post, User, Vote } = require("../../models");
 
 router.get("/", (req, res) => {
   console.log("======================");
@@ -59,6 +58,36 @@ router.post("/", (req, res) => {
       console.log(err);
       res.status(500).json(err);
     });
+});
+
+router.put("/upvote", (req, res) => {
+  Vote.create({
+    user_id: req.body.user_id,
+    post_id: req.body.post_id,
+  }).then(() => {
+    return Post.findOne({
+      where: {
+        id: req.body.post_id,
+      },
+      attributes: [
+        "id",
+        "post_url",
+        "title",
+        "created_at",
+        [
+          sequelize.literal(
+            "(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)"
+          ),
+          "vote_count",
+        ],
+      ],
+    })
+      .then((dbPostData) => res.json(dbPostData))
+      .catch((err) => {
+        console.log(err);
+        res.status(400).json(err);
+      });
+  });
 });
 
 router.put("/:id", (req, res) => {
